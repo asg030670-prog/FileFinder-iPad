@@ -27,6 +27,7 @@ public final class AppEnvironment: ObservableObject {
     @Published public private(set) var lastFullIndexDate: Date?
 
     private var indexTask: Task<Void, Never>?
+    private var hasStarted = false
     private var indexObservers: [UUID: @MainActor () -> Void] = [:]
 
     public init(
@@ -79,18 +80,38 @@ public final class AppEnvironment: ObservableObject {
 
     /// Loads the cached index from disk, then refreshes it in the background if it is stale.
     public func start() async {
+        guard !hasStarted else { return }
+        hasStarted = true
+        // Re-establish security-scoped access so cached results can be previewed and opened.
+        for location in locationStore.enabledLocations where location.kind == .userSelected {
+            do {
+                _ = try locationStore.beginAccessing(location)
+            } catch {
+                lastIndexingErrors.append(error.localizedDescription)
+            }
+        }
         if await index.load() {
             indexedItemCount = await index.count
             for handler in indexObservers.values { handler() }
         }
+        if needsReindexing {
+            await reindexAll()
+        }
+    }
+
+    /// `true` when a location was never indexed or its index is older than `reindexIntervalMinutes`.
+    public var needsReindexing: Bool {
         let interval = TimeInterval(configuration.reindexIntervalMinutes * 60)
-        let needsIndex = locationStore.enabledLocations.contains { location in
+        return locationStore.enabledLocations.contains { location in
             guard let last = location.lastIndexed else { return true }
             return Date().timeIntervalSince(last) > interval
         }
-        if needsIndex {
-            await reindexAll()
-        }
+    }
+
+    /// Re-indexes in the background when the index is stale (e.g. when the app becomes active).
+    public func refreshIfNeeded() {
+        guard hasStarted, needsReindexing else { return }
+        startReindexing()
     }
 
     /// Starts re-indexing (if not already running) without waiting for completion.

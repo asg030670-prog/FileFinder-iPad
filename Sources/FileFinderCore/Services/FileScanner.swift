@@ -85,14 +85,14 @@ public struct FileScanner: Sendable {
         if !options.includeHiddenFiles { enumeratorOptions.insert(.skipsHiddenFiles) }
         if options.skipPackageContents { enumeratorOptions.insert(.skipsPackageDescendants) }
 
-        var skipped = 0
+        let skippedCounter = Counter()
         guard let enumerator = fileManager.enumerator(
             at: root,
             includingPropertiesForKeys: FileScanner.resourceKeys,
             options: enumeratorOptions,
             errorHandler: { url, error in
                 Log.scanner.warning("Skipping \(url.lastPathComponent): \(error.localizedDescription)")
-                skipped += 1
+                skippedCounter.increment()
                 return true
             }
         ) else {
@@ -107,6 +107,8 @@ public struct FileScanner: Sendable {
 
         Log.scanner.info("Scanning \(root.lastPathComponent)")
 
+        var locallySkipped = 0
+
         while let url = enumerator.nextObject() as? URL {
             if Task.isCancelled {
                 Log.scanner.notice("Scan of \(root.lastPathComponent) cancelled after \(items.count) items")
@@ -117,7 +119,7 @@ public struct FileScanner: Sendable {
             do {
                 values = try url.resourceValues(forKeys: Set(FileScanner.resourceKeys))
             } catch {
-                skipped += 1
+                locallySkipped += 1
                 Log.scanner.debug("Cannot read attributes of \(url.lastPathComponent): \(error.localizedDescription)")
                 continue
             }
@@ -158,18 +160,33 @@ public struct FileScanner: Sendable {
             if let onBatch {
                 batch.append(item)
                 if batch.count >= options.batchSize {
-                    onBatch(batch, ScanProgress(scannedItems: items.count, skippedItems: skipped, currentPath: item.parentPath))
+                    onBatch(batch, ScanProgress(scannedItems: items.count, skippedItems: skippedCounter.value + locallySkipped, currentPath: item.parentPath))
                     batch.removeAll(keepingCapacity: true)
                 }
             }
         }
 
         if let onBatch, !batch.isEmpty {
-            onBatch(batch, ScanProgress(scannedItems: items.count, skippedItems: skipped, currentPath: nil))
+            onBatch(batch, ScanProgress(scannedItems: items.count, skippedItems: skippedCounter.value + locallySkipped, currentPath: nil))
         }
 
         let elapsed = Date().timeIntervalSince(startDate)
-        Log.scanner.info("Scanned \(items.count) items in \(root.lastPathComponent) (\(skipped) skipped) in \(String(format: "%.2f", elapsed))s")
+        Log.scanner.info("Scanned \(items.count) items in \(root.lastPathComponent) (\(skippedCounter.value + locallySkipped) skipped) in \(String(format: "%.2f", elapsed))s")
         return items
+    }
+}
+
+/// Thread-safe counter used by the enumerator error handler.
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value = 0
+
+    var value: Int {
+        lock.lock(); defer { lock.unlock() }
+        return _value
+    }
+
+    func increment() {
+        lock.lock(); _value += 1; lock.unlock()
     }
 }

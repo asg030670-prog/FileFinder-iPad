@@ -127,7 +127,11 @@ public final class SearchViewModel: ObservableObject {
 
     /// Waits for the pending (debounced) search to finish. Mainly useful for tests.
     public func waitForPendingSearch() async {
-        await searchTask?.value
+        // A new search may be scheduled while waiting (e.g. when the index changes); wait for that one too.
+        while let task = searchTask {
+            await task.value
+            if task == searchTask { break }
+        }
     }
 
     /// Called when the user submits the search field: saves the query in the history.

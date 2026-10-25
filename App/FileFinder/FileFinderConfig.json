@@ -1,0 +1,13 @@
+{
+  "searchDebounceMilliseconds": 250,
+  "maximumResults": 2000,
+  "searchCacheCapacity": 50,
+  "maximumHistoryEntries": 30,
+  "maximumContentSearchFileSize": 10000000,
+  "maximumContentSearchFiles": 5000,
+  "contentSearchEnabledByDefault": false,
+  "indexHiddenFiles": false,
+  "excludedDirectoryNames": [".Trash", ".git", ".build", "DerivedData", "node_modules"],
+  "reindexIntervalMinutes": 15,
+  "maximumPreviewCharacters": 5000
+}

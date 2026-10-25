@@ -33,6 +33,17 @@ final class SearchViewModelTests: XCTestCase {
         XCTAssertFalse(environment.isIndexing)
         XCTAssertNotNil(environment.locations.first?.lastIndexed)
         XCTAssertTrue(FileManager.default.fileExists(atPath: tmp.path("index.plist")))
+        XCTAssertFalse(environment.needsReindexing)
+    }
+
+    func testCachedIndexIsLoadedOnNextLaunch() async {
+        let restarted = AppEnvironment(
+            keyValueStore: InMemoryKeyValueStore(),
+            indexPersistence: IndexPersistence(fileURL: tmp.url.appendingPathComponent("index.plist")),
+            documentsURL: nil
+        )
+        await restarted.start()
+        XCTAssertEqual(restarted.indexedItemCount, 4, "items come from the cached index without scanning")
     }
 
     func testDebouncedRealTimeSearch() async {
