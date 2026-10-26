@@ -8,7 +8,7 @@ struct SearchResultsView: View {
     @ObservedObject var environment: AppEnvironment
     @Binding var selection: FileItem?
 
-    @State private var isShowingFilters = false
+    @State var isShowingFilters = false
 
     var body: some View {
         resultsContent

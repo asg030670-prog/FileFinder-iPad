@@ -4,7 +4,7 @@ import FileFinderCore
 
 /// Shows the most recent log entries (indexing, searches, file operations) for diagnostics.
 struct ActivityLogView: View {
-    @State private var entries: [LogEntry] = []
+    @State var entries: [LogEntry] = []
 
     var body: some View {
         List(Array(entries.reversed())) { entry in

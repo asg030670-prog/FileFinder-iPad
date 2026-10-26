@@ -10,8 +10,8 @@ struct FileThumbnailView: View {
     let item: FileItem
     let size: CGFloat
 
-    @Environment(\.displayScale) private var displayScale
-    @State private var thumbnail: UIImage?
+    @Environment(\.displayScale) var displayScale
+    @State var thumbnail: UIImage?
 
     var body: some View {
         ZStack {

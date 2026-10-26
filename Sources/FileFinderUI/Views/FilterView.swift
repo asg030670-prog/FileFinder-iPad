@@ -8,11 +8,12 @@ struct FilterView: View {
     @ObservedObject var viewModel: SearchViewModel
     let locations: [SearchLocation]
 
-    @Environment(\.dismiss) private var dismiss
-    @State private var minimumMegabytes = ""
-    @State private var maximumMegabytes = ""
-    @State private var customFrom = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
-    @State private var customTo = Date()
+    @Environment(\.dismiss) var dismiss
+    @State var minimumMegabytes = ""
+    @State var maximumMegabytes = ""
+    @State var isCustomSize = false
+    @State var customFrom = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+    @State var customTo = Date()
 
     var body: some View {
         NavigationStack {
@@ -29,6 +30,7 @@ struct FilterView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Reset") {
                         viewModel.resetFilters()
+                        isCustomSize = false
                         minimumMegabytes = ""
                         maximumMegabytes = ""
                     }
@@ -102,8 +104,12 @@ struct FilterView: View {
     /// Index into `SizeRange.presets`, or -1 for a custom range.
     private var sizePresetBinding: Binding<Int> {
         Binding(
-            get: { SizeRange.presets.firstIndex { $0.range == viewModel.filter.sizeRange } ?? -1 },
+            get: {
+                guard !isCustomSize else { return -1 }
+                return SizeRange.presets.firstIndex { $0.range == viewModel.filter.sizeRange } ?? -1
+            },
             set: { index in
+                isCustomSize = index < 0
                 if index >= 0 {
                     viewModel.filter.sizeRange = SizeRange.presets[index].range
                 } else {
@@ -119,8 +125,8 @@ struct FilterView: View {
     private func applyCustomSize() {
         func bytes(_ text: String) -> Int64? {
             let normalized = text.replacingOccurrences(of: ",", with: ".")
-            guard let value = Double(normalized), value >= 0 else { return nil }
-            return Int64(value * 1_000_000)
+            guard let value = Double(normalized), value.isFinite, value >= 0 else { return nil }
+            return Int64(exactly: (value * 1_000_000).rounded())
         }
         viewModel.filter.sizeRange = SizeRange(minimumBytes: bytes(minimumMegabytes), maximumBytes: bytes(maximumMegabytes))
     }
@@ -218,6 +224,7 @@ struct FilterView: View {
         let range = viewModel.filter.sizeRange
         if let minimum = range.minimumBytes { minimumMegabytes = String(Double(minimum) / 1_000_000) }
         if let maximum = range.maximumBytes { maximumMegabytes = String(Double(maximum) / 1_000_000) }
+        isCustomSize = !SizeRange.presets.contains { $0.range == range }
         if case .custom(let from, let to) = viewModel.filter.dateFilter {
             if let from { customFrom = from }
             if let to { customTo = to }

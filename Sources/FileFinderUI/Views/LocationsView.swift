@@ -9,7 +9,7 @@ struct LocationsView: View {
     @ObservedObject var viewModel: LocationsViewModel
     @ObservedObject var environment: AppEnvironment
 
-    @State private var isShowingFolderPicker = false
+    @State var isShowingFolderPicker = false
 
     var body: some View {
         List {
