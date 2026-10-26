@@ -1,0 +1,51 @@
+# XcodeGen specification for the FileFinder iPad app.
+# Generate the Xcode project with:  cd App && xcodegen generate
+name: FileFinder
+options:
+  bundleIdPrefix: com.filefinder
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  FileFinderPackage:
+    path: ..
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  FileFinder:
+    type: application
+    platform: iOS
+    sources:
+      - path: FileFinder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.filefinder.ipad
+        PRODUCT_NAME: FileFinder
+        INFOPLIST_FILE: FileFinder/Info.plist
+        TARGETED_DEVICE_FAMILY: "2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+        # Set your team to run on a device:
+        # DEVELOPMENT_TEAM: XXXXXXXXXX
+    dependencies:
+      - package: FileFinderPackage
+        product: FileFinderCore
+      - package: FileFinderPackage
+        product: FileFinderUI
+
+schemes:
+  FileFinder:
+    build:
+      targets:
+        FileFinder: all
+    run:
+      config: Debug
+    archive:
+      config: Release
